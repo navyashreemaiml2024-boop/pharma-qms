@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { setComplaint } from "./store/complaintSlice";
 import "./App.css";
 
-const API = "http://127.0.0.1:8000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 const emptyForm = {
   complaintSource: "",
@@ -47,16 +47,12 @@ function App() {
     }));
   };
 
-  /* =========================
-     LOAD COMPLAINT HISTORY
-  ========================= */
-
   const loadComplaints = async () => {
     setHistoryLoading(true);
     setHistoryError("");
 
     try {
-      const response = await fetch(`${API}/complaints`);
+      const response = await fetch(`${API_URL}/complaints`);
 
       if (!response.ok) {
         throw new Error("Failed to load complaints");
@@ -79,19 +75,11 @@ function App() {
     }
   };
 
-  /* =========================
-     LOAD HISTORY WHEN PAGE OPENS
-  ========================= */
-
   useEffect(() => {
     if (page === "history") {
       loadComplaints();
     }
   }, [page]);
-
-  /* =========================
-     AI ANALYSIS
-  ========================= */
 
   const analyzeComplaint = async () => {
     if (!form.description.trim()) {
@@ -102,7 +90,7 @@ function App() {
     setAnalyzing(true);
 
     try {
-      const response = await fetch(`${API}/analyze`, {
+      const response = await fetch(`${API_URL}/analyze`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,7 +103,6 @@ function App() {
       }
 
       const data = await response.json();
-
       const result = data.analysis;
 
       setAnalysis(result);
@@ -139,10 +126,6 @@ function App() {
     }
   };
 
-  /* =========================
-     SAVE COMPLAINT
-  ========================= */
-
   const saveComplaint = async () => {
     if (
       !form.customerName ||
@@ -158,7 +141,7 @@ function App() {
     setSaving(true);
 
     try {
-      const response = await fetch(`${API}/complaints`, {
+      const response = await fetch(`${API_URL}/complaints`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -188,22 +171,15 @@ function App() {
       );
 
       await loadComplaints();
-
       setPage("history");
     } catch (error) {
       console.error(error);
 
-      alert(
-        "Could not save the complaint to the backend."
-      );
+      alert("Could not save the complaint to the backend.");
     } finally {
       setSaving(false);
     }
   };
-
-  /* =========================
-     RESET
-  ========================= */
 
   const resetForm = () => {
     setForm({ ...emptyForm });
@@ -212,11 +188,7 @@ function App() {
 
   return (
     <div className="app-shell">
-
-      {/* SIDEBAR */}
-
       <aside className="sidebar">
-
         <div className="brand">
           <div className="brand-icon">⚕</div>
 
@@ -227,7 +199,6 @@ function App() {
         </div>
 
         <nav className="nav">
-
           <NavButton
             active={page === "dashboard"}
             onClick={() => setPage("dashboard")}
@@ -262,11 +233,9 @@ function App() {
             icon="📊"
             text="Analytics"
           />
-
         </nav>
 
         <div className="sidebar-bottom">
-
           <NavButton
             active={page === "settings"}
             onClick={() => setPage("settings")}
@@ -282,17 +251,11 @@ function App() {
               <small>AI Assistant Active</small>
             </div>
           </div>
-
         </div>
-
       </aside>
 
-      {/* MAIN */}
-
       <div className="main-area">
-
         <header className="topbar">
-
           <div>
             <h1>AI Complaint Management System</h1>
 
@@ -305,7 +268,6 @@ function App() {
             <span className="status-dot"></span>
             AI Assistant Online
           </div>
-
         </header>
 
         {page === "dashboard" && (
@@ -350,23 +312,12 @@ function App() {
         )}
 
         {page === "settings" && <Settings />}
-
       </div>
     </div>
   );
 }
 
-
-/* =========================
-   NAVIGATION
-========================= */
-
-function NavButton({
-  active,
-  onClick,
-  icon,
-  text,
-}) {
+function NavButton({ active, onClick, icon, text }) {
   return (
     <button
       className={active ? "nav-item active" : "nav-item"}
@@ -378,20 +329,10 @@ function NavButton({
   );
 }
 
-
-/* =========================
-   DASHBOARD
-========================= */
-
-function Dashboard({
-  onNewComplaint,
-  onHistory,
-}) {
+function Dashboard({ onNewComplaint, onHistory }) {
   return (
     <main className="content">
-
       <div className="page-title">
-
         <div>
           <h2>Quality Dashboard</h2>
 
@@ -407,11 +348,9 @@ function Dashboard({
         >
           + New Complaint
         </button>
-
       </div>
 
       <div className="stats-grid">
-
         <StatCard
           icon="📋"
           title="Total Complaints"
@@ -439,15 +378,11 @@ function Dashboard({
           value="96"
           change="75% resolution rate"
         />
-
       </div>
 
       <div className="dashboard-grid">
-
         <div className="card overview-card">
-
           <div className="card-header">
-
             <div>
               <h2>Complaint Overview</h2>
 
@@ -455,11 +390,9 @@ function Dashboard({
                 Current quality system status
               </p>
             </div>
-
           </div>
 
           <div className="overview-list">
-
             <div>
               <span>Product Quality</span>
               <strong>42%</strong>
@@ -479,13 +412,10 @@ function Dashboard({
               <span>Other</span>
               <strong>13%</strong>
             </div>
-
           </div>
-
         </div>
 
         <div className="card quick-card">
-
           <h2>Quick Actions</h2>
 
           <button onClick={onNewComplaint}>
@@ -495,19 +425,11 @@ function Dashboard({
           <button onClick={onHistory}>
             📋 View Complaint History
           </button>
-
         </div>
-
       </div>
-
     </main>
   );
 }
-
-
-/* =========================
-   COMPLAINT PAGE
-========================= */
 
 function ComplaintPage({
   form,
@@ -521,9 +443,7 @@ function ComplaintPage({
 }) {
   return (
     <main className="content">
-
       <div className="page-title">
-
         <div>
           <h2>Complaint Intake</h2>
 
@@ -536,19 +456,15 @@ function ComplaintPage({
         <span className="badge">
           AI TRIAGE READY
         </span>
-
       </div>
 
       <div className="dashboard">
-
         <section className="card complaint-panel">
-
           <div className="section-title">
             1. CUSTOMER DETAILS
           </div>
 
           <div className="grid two">
-
             <Field
               label="Complaint Source"
               name="complaintSource"
@@ -572,7 +488,6 @@ function ComplaintPage({
               onChange={handleChange}
               placeholder="customer@example.com"
             />
-
           </div>
 
           <div className="section-title">
@@ -580,7 +495,6 @@ function ComplaintPage({
           </div>
 
           <div className="grid two">
-
             <SelectField
               label="Product Type"
               name="productType"
@@ -636,7 +550,6 @@ function ComplaintPage({
               onChange={handleChange}
               placeholder="e.g. 100 units"
             />
-
           </div>
 
           <div className="section-title">
@@ -644,7 +557,6 @@ function ComplaintPage({
           </div>
 
           <div className="grid two">
-
             <Field
               label="Complaint Type"
               name="complaintType"
@@ -660,7 +572,6 @@ function ComplaintPage({
               value={form.complaintDate}
               onChange={handleChange}
             />
-
           </div>
 
           <label className="field-label">
@@ -680,7 +591,6 @@ function ComplaintPage({
           </div>
 
           <div className="grid two">
-
             <SelectField
               label="Initial Severity"
               name="severity"
@@ -706,11 +616,9 @@ function ComplaintPage({
                 "Critical",
               ]}
             />
-
           </div>
 
           <div className="actions">
-
             <button
               className="secondary"
               onClick={resetForm}
@@ -725,15 +633,11 @@ function ComplaintPage({
             >
               {saving ? "Saving..." : "Save Complaint"}
             </button>
-
           </div>
-
         </section>
 
         <section className="card assistant-panel">
-
           <div className="card-header">
-
             <div>
               <h2>
                 AI Complaint Intake Assistant
@@ -744,17 +648,11 @@ function ComplaintPage({
               </p>
             </div>
 
-            <span className="beta">
-              AI
-            </span>
-
+            <span className="beta">AI</span>
           </div>
 
           <div className="ai-intro">
-
-            <div className="ai-big-icon">
-              🤖
-            </div>
+            <div className="ai-big-icon">🤖</div>
 
             <h3>
               Intelligent Complaint Analysis
@@ -765,7 +663,6 @@ function ComplaintPage({
               information and recommends quality
               actions.
             </p>
-
           </div>
 
           <button
@@ -781,26 +678,16 @@ function ComplaintPage({
           {analysis && (
             <AnalysisResult analysis={analysis} />
           )}
-
         </section>
-
       </div>
-
     </main>
   );
 }
 
-
-/* =========================
-   AI RESULT
-========================= */
-
 function AnalysisResult({ analysis }) {
   return (
     <div className="analysis">
-
       <div className="analysis-heading">
-
         <div>
           <h3>AI Risk Assessment</h3>
 
@@ -816,11 +703,9 @@ function AnalysisResult({ analysis }) {
         >
           {analysis.riskLevel}
         </span>
-
       </div>
 
       <div className="analysis-grid">
-
         <Result
           title="Completeness"
           value={analysis.completeness}
@@ -835,11 +720,9 @@ function AnalysisResult({ analysis }) {
           title="Risk Score"
           value={`${analysis.riskScore}/100`}
         />
-
       </div>
 
       <div className="ai-section">
-
         <h4>🔎 Risk Interpretation</h4>
 
         <p>
@@ -850,19 +733,15 @@ function AnalysisResult({ analysis }) {
         <p>
           Recommended action: {analysis.action}
         </p>
-
       </div>
 
       <div className="ai-section">
-
         <h4>🧠 Root Cause Recommendation</h4>
 
         <p>{analysis.rootCause}</p>
-
       </div>
 
       <div className="ai-section">
-
         <h4>🛠 CAPA Recommendation</h4>
 
         <p>
@@ -874,35 +753,21 @@ function AnalysisResult({ analysis }) {
           <strong>Preventive:</strong>{" "}
           {analysis.capa?.preventive}
         </p>
-
       </div>
 
       <div className="ai-section">
-
         <h4>📄 Complaint Summary</h4>
 
         <p>{analysis.summary}</p>
-
       </div>
-
     </div>
   );
 }
 
-
-/* =========================
-   AI PAGE
-========================= */
-
-function AIPage({
-  analysis,
-  onStart,
-}) {
+function AIPage({ analysis, onStart }) {
   return (
     <main className="content">
-
       <div className="page-title">
-
         <div>
           <h2>AI Analysis Center</h2>
 
@@ -911,7 +776,6 @@ function AIPage({
             assessment.
           </p>
         </div>
-
       </div>
 
       {analysis ? (
@@ -920,12 +784,9 @@ function AIPage({
         </div>
       ) : (
         <div className="card empty-state">
-
           <div>🤖</div>
 
-          <h3>
-            No AI analysis available
-          </h3>
+          <h3>No AI analysis available</h3>
 
           <p>
             Submit a complaint to generate
@@ -938,18 +799,11 @@ function AIPage({
           >
             Start Complaint Analysis
           </button>
-
         </div>
       )}
-
     </main>
   );
 }
-
-
-/* =========================
-   HISTORY
-========================= */
 
 function HistoryPage({
   complaints,
@@ -960,9 +814,7 @@ function HistoryPage({
 }) {
   return (
     <main className="content">
-
       <div className="page-title">
-
         <div>
           <h2>Complaint History</h2>
 
@@ -973,7 +825,6 @@ function HistoryPage({
         </div>
 
         <div className="history-actions">
-
           <button
             className="secondary"
             onClick={onRefresh}
@@ -987,15 +838,15 @@ function HistoryPage({
           >
             + Add Complaint
           </button>
-
         </div>
-
       </div>
 
       {loading && (
         <div className="card empty-state">
           <div>⏳</div>
+
           <h3>Loading complaints...</h3>
+
           <p>
             Getting complaint records from the database.
           </p>
@@ -1004,12 +855,9 @@ function HistoryPage({
 
       {error && !loading && (
         <div className="card empty-state">
-
           <div>⚠️</div>
 
-          <h3>
-            Unable to load history
-          </h3>
+          <h3>Unable to load history</h3>
 
           <p>{error}</p>
 
@@ -1019,21 +867,16 @@ function HistoryPage({
           >
             Try Again
           </button>
-
         </div>
       )}
 
       {!loading &&
         !error &&
         complaints.length === 0 && (
-
           <div className="card empty-state">
-
             <div>📋</div>
 
-            <h3>
-              No complaints yet
-            </h3>
+            <h3>No complaints yet</h3>
 
             <p>
               Submitted complaints will appear here.
@@ -1045,35 +888,26 @@ function HistoryPage({
             >
               Add Complaint
             </button>
-
           </div>
         )}
 
       {!loading &&
         !error &&
         complaints.length > 0 && (
-
           <div className="card history-card">
-
             <div className="history-count">
-              <strong>
-                {complaints.length}
-              </strong>{" "}
+              <strong>{complaints.length}</strong>{" "}
               complaint
               {complaints.length !== 1 ? "s" : ""} found
             </div>
 
             <div className="history-list">
-
               {complaints.map((item) => (
-
                 <div
                   className="complaint-row"
                   key={item.id}
                 >
-
                   <div>
-
                     <strong>
                       {item.productName ||
                         "Unnamed Product"}
@@ -1088,11 +922,9 @@ function HistoryPage({
                       {item.customerName ||
                         "Not provided"}
                     </span>
-
                   </div>
 
                   <div>
-
                     <span className="table-label">
                       Batch
                     </span>
@@ -1101,63 +933,43 @@ function HistoryPage({
                       {item.batchNumber ||
                         "Not provided"}
                     </strong>
-
                   </div>
 
                   <div>
-
                     <span className="table-label">
                       Severity
                     </span>
 
                     <strong>
-                      {item.severity ||
-                        "Medium"}
+                      {item.severity || "Medium"}
                     </strong>
-
                   </div>
 
                   <div>
-
                     <span className="table-label">
                       Priority
                     </span>
 
                     <strong>
-                      {item.priority ||
-                        "Medium"}
+                      {item.priority || "Medium"}
                     </strong>
-
                   </div>
 
                   <div>
-
                     <span className="history-status">
                       Saved
                     </span>
-
                   </div>
-
                 </div>
-
               ))}
-
             </div>
-
           </div>
         )}
-
     </main>
   );
 }
 
-
-/* =========================
-   ANALYTICS
-========================= */
-
 function Analytics({ complaints }) {
-
   const total = complaints.length;
 
   const highRisk = complaints.filter(
@@ -1176,23 +988,17 @@ function Analytics({ complaints }) {
 
   return (
     <main className="content">
-
       <div className="page-title">
-
         <div>
-
           <h2>Quality Analytics</h2>
 
           <p>
             Complaint trends and risk distribution.
           </p>
-
         </div>
-
       </div>
 
       <div className="stats-grid">
-
         <StatCard
           icon="📈"
           title="Total Complaints"
@@ -1220,14 +1026,10 @@ function Analytics({ complaints }) {
           value={lowRisk}
           change="Normal monitoring"
         />
-
       </div>
 
       <div className="card analytics-card">
-
-        <h3>
-          Complaint Categories
-        </h3>
+        <h3>Complaint Categories</h3>
 
         <Bar
           label="Product Quality"
@@ -1252,22 +1054,14 @@ function Analytics({ complaints }) {
           width="25%"
           value="13%"
         />
-
       </div>
-
     </main>
   );
 }
 
-
-function Bar({
-  label,
-  width,
-  value,
-}) {
+function Bar({ label, width, value }) {
   return (
     <div className="bar">
-
       <span>{label}</span>
 
       <div>
@@ -1275,37 +1069,25 @@ function Bar({
       </div>
 
       <strong>{value}</strong>
-
     </div>
   );
 }
 
-
-/* =========================
-   SETTINGS
-========================= */
-
 function Settings() {
   return (
     <main className="content">
-
       <div className="page-title">
-
         <div>
-
           <h2>System Settings</h2>
 
           <p>
             AI Complaint Management System
             configuration.
           </p>
-
         </div>
-
       </div>
 
       <div className="settings-grid">
-
         <Setting
           icon="🤖"
           title="AI Engine"
@@ -1341,22 +1123,14 @@ function Settings() {
           title="System Version"
           description="AI Complaint Management System Version 1.0 Prototype."
         />
-
       </div>
-
     </main>
   );
 }
 
-
-function Setting({
-  icon,
-  title,
-  description,
-}) {
+function Setting({ icon, title, description }) {
   return (
     <div className="card setting-card">
-
       <h3>
         {icon} {title}
       </h3>
@@ -1366,15 +1140,9 @@ function Setting({
       <span className="setting-status">
         ● Active
       </span>
-
     </div>
   );
 }
-
-
-/* =========================
-   SMALL COMPONENTS
-========================= */
 
 function StatCard({
   icon,
@@ -1384,25 +1152,18 @@ function StatCard({
 }) {
   return (
     <div className="card stat-card">
-
-      <div className="stat-icon">
-        {icon}
-      </div>
+      <div className="stat-icon">{icon}</div>
 
       <div>
-
         <span>{title}</span>
 
         <strong>{value}</strong>
 
         <small>{change}</small>
-
       </div>
-
     </div>
   );
 }
-
 
 function Field({
   label,
@@ -1414,7 +1175,6 @@ function Field({
 }) {
   return (
     <div>
-
       <label className="field-label">
         {label}
       </label>
@@ -1426,11 +1186,9 @@ function Field({
         onChange={onChange}
         placeholder={placeholder}
       />
-
     </div>
   );
 }
-
 
 function SelectField({
   label,
@@ -1441,7 +1199,6 @@ function SelectField({
 }) {
   return (
     <div>
-
       <label className="field-label">
         {label}
       </label>
@@ -1451,7 +1208,6 @@ function SelectField({
         value={value}
         onChange={onChange}
       >
-
         {options.map((option) => (
           <option
             key={option}
@@ -1460,28 +1216,19 @@ function SelectField({
             {option}
           </option>
         ))}
-
       </select>
-
     </div>
   );
 }
 
-
-function Result({
-  title,
-  value,
-}) {
+function Result({ title, value }) {
   return (
     <div className="result-box">
-
       <span>{title}</span>
 
       <strong>{value}</strong>
-
     </div>
   );
 }
-
 
 export default App;
