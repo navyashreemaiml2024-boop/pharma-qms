@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 import json
 
 from database import SessionLocal, Complaint, Base, engine
+from ai_workflow import run_complaint_workflow
 
 
 # =========================================================
