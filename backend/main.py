@@ -1,4 +1,3 @@
-```python
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -61,7 +60,6 @@ def get_db():
 # =========================================================
 
 class ComplaintRequest(BaseModel):
-
     complaintSource: str = ""
     customerName: str = ""
     email: str = ""
@@ -79,7 +77,7 @@ class ComplaintRequest(BaseModel):
     complaintType: str = ""
     complaintDate: str = ""
 
-    description: str
+    description: str = ""
 
     severity: str = "Medium"
     priority: str = "Medium"
@@ -115,7 +113,6 @@ def analyze_complaint(complaint: ComplaintRequest):
         or "hospital" in text
         or "serious injury" in text
     ):
-
         category = "Patient Safety"
         severity = "Critical"
         risk_level = "CRITICAL"
@@ -138,7 +135,6 @@ def analyze_complaint(complaint: ComplaintRequest):
         or "broken" in text
         or "cracks" in text
     ):
-
         category = "Product Quality"
         severity = "High"
         risk_level = "HIGH"
@@ -160,7 +156,6 @@ def analyze_complaint(complaint: ComplaintRequest):
         or "missing tablet" in text
         or "packaging" in text
     ):
-
         category = "Packaging / Appearance"
         severity = "Medium"
         risk_level = "MEDIUM"
@@ -180,7 +175,6 @@ def analyze_complaint(complaint: ComplaintRequest):
         or "appearance" in text
         or "information" in text
     ):
-
         category = "General Quality"
         severity = "Low"
         risk_level = "LOW"
@@ -196,13 +190,11 @@ def analyze_complaint(complaint: ComplaintRequest):
     # -----------------------------------------------------
 
     if complaint.severity == "Critical":
-
         severity = "Critical"
         risk_level = "CRITICAL"
         risk_score = max(risk_score, 95)
 
     elif complaint.severity == "High":
-
         severity = "High"
         risk_level = "HIGH"
         risk_score = max(risk_score, 82)
@@ -223,7 +215,6 @@ def analyze_complaint(complaint: ComplaintRequest):
     # -----------------------------------------------------
 
     result = {
-
         "completeness": (
             "Complete"
             if complete
@@ -249,7 +240,6 @@ def analyze_complaint(complaint: ComplaintRequest):
         ),
 
         "capa": {
-
             "corrective": (
                 "Investigate the affected batch, review "
                 "manufacturing records and evaluate "
@@ -260,7 +250,6 @@ def analyze_complaint(complaint: ComplaintRequest):
                 "Strengthen process monitoring, trend similar "
                 "complaints and review preventive controls."
             ),
-
         },
 
         "summary": (
@@ -364,13 +353,9 @@ def save_complaint(
     db.refresh(new_complaint)
 
     return {
-
         "success": True,
-
         "message": "Complaint saved successfully",
-
         "complaintId": new_complaint.id,
-
         "analysis": analysis,
     }
 
@@ -399,13 +384,11 @@ def get_complaints(
         if complaint.aiAnalysis:
 
             try:
-
                 analysis = json.loads(
                     complaint.aiAnalysis
                 )
 
             except Exception:
-
                 analysis = None
 
         result.append({
@@ -447,12 +430,7 @@ def get_complaints(
         })
 
     return {
-
         "success": True,
-
         "count": len(result),
-
         "complaints": result,
-
     }
-```
