@@ -1,9 +1,17 @@
+import os
+import json
 from typing import TypedDict
 
+from groq import Groq
 from langgraph.graph import StateGraph, END
 
 
+# =========================================================
+# LANGGRAPH STATE
+# =========================================================
+
 class ComplaintState(TypedDict, total=False):
+
     complaint: dict
     text: str
 
@@ -22,141 +30,211 @@ class ComplaintState(TypedDict, total=False):
     analysis: dict
 
 
+# =========================================================
+# GROQ CLIENT
+# =========================================================
+
+def get_groq_client():
+
+    api_key = os.getenv("GROQ_API_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "GROQ_API_KEY environment variable is not configured."
+        )
+
+    return Groq(api_key=api_key)
+
+
+# =========================================================
+# NODE 1 — PREPARE COMPLAINT
+# =========================================================
+
 def prepare_complaint(state: ComplaintState):
+
     complaint = state["complaint"]
 
     return {
-        "text": complaint.get("description", "").lower()
+        "text": complaint.get(
+            "description",
+            ""
+        ).strip()
     }
 
 
+# =========================================================
+# NODE 2 — GROQ LLM ANALYSIS
+# =========================================================
+
 def assess_risk(state: ComplaintState):
+
     complaint = state["complaint"]
     text = state.get("text", "")
 
-    category = complaint.get("complaintType") or "Product Quality"
-    severity = complaint.get("severity") or "Medium"
+    client = get_groq_client()
 
-    risk_level = "MEDIUM"
-    risk_score = 45
-
-    action = (
-        "Review the complaint and perform an "
-        "initial quality assessment."
+    product_name = complaint.get(
+        "productName",
+        "Unknown product"
     )
 
-    # CRITICAL RISK
-    if (
-        "death" in text
-        or "fatal" in text
-        or "hospital" in text
-        or "serious injury" in text
-    ):
-        category = "Patient Safety"
-        severity = "Critical"
-        risk_level = "CRITICAL"
-        risk_score = 95
+    complaint_type = complaint.get(
+        "complaintType",
+        "Product Quality"
+    )
 
-        action = (
-            "Immediately escalate to Quality Assurance "
-            "and Pharmacovigilance teams."
-        )
+    manual_severity = complaint.get(
+        "severity",
+        "Medium"
+    )
 
-    # HIGH RISK
-    elif (
-        "contamination" in text
-        or "wrong medicine" in text
-        or "incorrect dosage" in text
-        or "leakage" in text
-        or "broken" in text
-        or "cracks" in text
-    ):
-        category = "Product Quality"
-        severity = "High"
-        risk_level = "HIGH"
-        risk_score = 82
+    prompt = f"""
+Analyze the following pharmaceutical product complaint.
 
-        action = (
-            "Initiate batch investigation and review "
-            "manufacturing and packaging records."
-        )
+Product:
+{product_name}
 
-    # MEDIUM RISK
-    elif (
-        "damaged" in text
-        or "discoloration" in text
-        or "label" in text
-        or "missing tablet" in text
-        or "packaging" in text
-    ):
-        category = "Packaging / Appearance"
-        severity = "Medium"
-        risk_level = "MEDIUM"
-        risk_score = 60
+Complaint Type:
+{complaint_type}
 
-        action = (
-            "Review packaging controls, batch records "
-            "and affected product samples."
-        )
+User Selected Severity:
+{manual_severity}
 
-    # LOW RISK
-    elif (
-        "minor" in text
-        or "appearance" in text
-        or "information" in text
-    ):
-        category = "General Quality"
-        severity = "Low"
-        risk_level = "LOW"
-        risk_score = 25
+Complaint Description:
+{text}
 
-        action = (
-            "Record the complaint and monitor for "
-            "recurring trends."
-        )
+Return ONLY valid JSON.
 
-    # Respect manually selected severity
-    if complaint.get("severity") == "Critical":
-        severity = "Critical"
-        risk_level = "CRITICAL"
-        risk_score = max(risk_score, 95)
+The JSON must contain exactly these fields:
 
-    elif complaint.get("severity") == "High":
-        severity = "High"
-        risk_level = "HIGH"
-        risk_score = max(risk_score, 82)
+{{
+  "category": "string",
+  "severity": "Low | Medium | High | Critical",
+  "riskLevel": "LOW | MEDIUM | HIGH | CRITICAL",
+  "riskScore": 0,
+  "action": "string",
+  "rootCause": "string",
+  "capa": {{
+    "corrective": "string",
+    "preventive": "string"
+  }},
+  "summary": "string"
+}}
+
+Rules:
+
+1. Assess the complaint based on the information provided.
+2. riskScore must be an integer from 0 to 100.
+3. riskLevel must match the riskScore and severity.
+4. If the user selected Critical severity, do not downgrade it.
+5. If the user selected High severity, do not downgrade it.
+6. Provide a practical pharmaceutical quality action.
+7. Provide a possible root cause, clearly treating it as a possibility.
+8. Provide corrective and preventive CAPA recommendations.
+9. Do not invent patient information or test results.
+10. Do not include markdown.
+11. Return JSON only.
+"""
+
+    response = client.chat.completions.create(
+    model="openai/gpt-oss-120b",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a pharmaceutical quality complaint "
+                    "assessment assistant. Provide structured, "
+                    "careful and evidence-based complaint analysis."
+                ),
+            },
+            {
+                "role": "user",
+                "content": prompt,
+            },
+        ],
+        temperature=0.2,
+        max_completion_tokens=1000,
+    )
+
+    content = response.choices[0].message.content.strip()
+
+    # Remove accidental markdown JSON fences
+    if content.startswith("```json"):
+        content = content[7:]
+
+    if content.startswith("```"):
+        content = content[3:]
+
+    if content.endswith("```"):
+        content = content[:-3]
+
+    content = content.strip()
+
+    try:
+        result = json.loads(content)
+
+    except json.JSONDecodeError as exc:
+
+        raise RuntimeError(
+            "Groq returned invalid JSON. "
+            f"Raw response: {content}"
+        ) from exc
 
     return {
-        "category": category,
-        "severity": severity,
-        "riskLevel": risk_level,
-        "riskScore": risk_score,
-        "action": action,
-    }
-
-
-def generate_recommendations(state: ComplaintState):
-    return {
-        "rootCause": (
-            "Possible manufacturing or process-related issue. "
-            "Batch records and manufacturing controls should "
-            "be reviewed."
+        "category": result.get(
+            "category",
+            "Product Quality"
         ),
-        "capa": {
-            "corrective": (
-                "Investigate the affected batch, review "
-                "manufacturing records and evaluate "
-                "retained samples."
-            ),
-            "preventive": (
-                "Strengthen process monitoring, trend similar "
-                "complaints and review preventive controls."
-            ),
-        },
+
+        "severity": result.get(
+            "severity",
+            manual_severity
+        ),
+
+        "riskLevel": result.get(
+            "riskLevel",
+            "MEDIUM"
+        ),
+
+        "riskScore": int(
+            result.get(
+                "riskScore",
+                50
+            )
+        ),
+
+        "action": result.get(
+            "action",
+            "Perform an initial quality assessment."
+        ),
+
+        "rootCause": result.get(
+            "rootCause",
+            "Root cause requires further investigation."
+        ),
+
+        "capa": result.get(
+            "capa",
+            {
+                "corrective": (
+                    "Investigate the affected batch "
+                    "and review relevant records."
+                ),
+                "preventive": (
+                    "Review preventive controls and "
+                    "monitor similar complaints."
+                ),
+            }
+        ),
     }
 
+
+# =========================================================
+# NODE 3 — FINALIZE ASSESSMENT
+# =========================================================
 
 def finalize_assessment(state: ComplaintState):
+
     complaint = state["complaint"]
 
     complete = (
@@ -166,42 +244,80 @@ def finalize_assessment(state: ComplaintState):
         and bool(complaint.get("description"))
     )
 
-    category = state["category"]
-    risk_level = state["riskLevel"]
     product_name = (
         complaint.get("productName")
         or "the pharmaceutical product"
     )
 
+    category = state.get(
+        "category",
+        "Product Quality"
+    )
+
+    severity = state.get(
+        "severity",
+        "Medium"
+    )
+
+    risk_level = state.get(
+        "riskLevel",
+        "MEDIUM"
+    )
+
+    risk_score = state.get(
+        "riskScore",
+        50
+    )
+
+    action = state.get(
+        "action",
+        "Perform an initial quality assessment."
+    )
+
+    root_cause = state.get(
+        "rootCause",
+        "Root cause requires further investigation."
+    )
+
+    capa = state.get(
+        "capa",
+        {}
+    )
+
+    summary = (
+        f"AI assessment identified a "
+        f"{risk_level.lower()} risk complaint related to "
+        f"{category.lower()} involving "
+        f"{product_name}."
+    )
+
     analysis = {
+
         "completeness": (
             "Complete"
             if complete
             else "Needs Review"
         ),
 
-        "duplicate": "No likely duplicate found",
+        "duplicate": (
+            "No duplicate check performed"
+        ),
 
         "category": category,
 
-        "severity": state["severity"],
+        "severity": severity,
 
-        "riskScore": state["riskScore"],
+        "riskScore": risk_score,
 
         "riskLevel": risk_level,
 
-        "action": state["action"],
+        "action": action,
 
-        "rootCause": state["rootCause"],
+        "rootCause": root_cause,
 
-        "capa": state["capa"],
+        "capa": capa,
 
-        "summary": (
-            f"AI assessment identified a "
-            f"{risk_level.lower()} risk complaint related to "
-            f"{category.lower()} involving "
-            f"{product_name}."
-        ),
+        "summary": summary,
     }
 
     return {
@@ -218,6 +334,7 @@ def finalize_assessment(state: ComplaintState):
 
 workflow = StateGraph(ComplaintState)
 
+
 workflow.add_node(
     "prepare_complaint",
     prepare_complaint
@@ -229,17 +346,15 @@ workflow.add_node(
 )
 
 workflow.add_node(
-    "generate_recommendations",
-    generate_recommendations
-)
-
-workflow.add_node(
     "finalize_assessment",
     finalize_assessment
 )
 
 
-workflow.set_entry_point("prepare_complaint")
+workflow.set_entry_point(
+    "prepare_complaint"
+)
+
 
 workflow.add_edge(
     "prepare_complaint",
@@ -248,11 +363,6 @@ workflow.add_edge(
 
 workflow.add_edge(
     "assess_risk",
-    "generate_recommendations"
-)
-
-workflow.add_edge(
-    "generate_recommendations",
     "finalize_assessment"
 )
 
@@ -262,10 +372,18 @@ workflow.add_edge(
 )
 
 
+# Compile LangGraph
 complaint_graph = workflow.compile()
 
 
-def run_complaint_workflow(complaint: dict):
+# =========================================================
+# WORKFLOW EXECUTION
+# =========================================================
+
+def run_complaint_workflow(
+    complaint: dict
+):
+
     result = complaint_graph.invoke(
         {
             "complaint": complaint

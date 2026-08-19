@@ -3,3 +3,4 @@ uvicorn[standard]
 sqlalchemy
 pydantic
 langgraph==1.2.11
+groq
